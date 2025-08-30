@@ -356,7 +356,9 @@
       const checksMap = {};
       checks?.forEach(check => {
         if (!checksMap[check.date]) checksMap[check.date] = {};
-        checksMap[check.date][check.goal_id] = check.value;
+        // Handle both JSONB and regular values
+        const value = typeof check.value === 'object' ? check.value.value : check.value;
+        checksMap[check.date][check.goal_id] = value;
       });
       
       state = {
@@ -387,12 +389,18 @@
     
     try {
       updateSyncStatus('Saving goals...');
+      console.log('Saving goals for user:', currentUser.id);
       
       // Delete existing goals
-      await supabaseClient
+      const { error: deleteError } = await supabaseClient
         .from('goals')
         .delete()
         .eq('user_id', currentUser.id);
+      
+      if (deleteError) {
+        console.error('Delete goals error:', deleteError);
+        throw deleteError;
+      }
       
       // Insert new goals
       if (state.goals.length > 0) {
@@ -406,17 +414,24 @@
           unit_size: goal.unitSize || 1
         }));
         
-        const { error } = await supabaseClient
+        console.log('Inserting goals:', goalsToInsert);
+        
+        const { data, error } = await supabaseClient
           .from('goals')
           .insert(goalsToInsert);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Insert goals error:', error);
+          throw error;
+        }
+        
+        console.log('Goals inserted successfully:', data);
       }
       
       updateSyncStatus('Goals saved');
     } catch (error) {
       console.error('Error saving goals:', error);
-      updateSyncStatus('Error saving goals');
+      updateSyncStatus('Error saving goals: ' + error.message);
     }
   }
   
@@ -434,7 +449,7 @@
             user_id: currentUser.id,
             date: date,
             goal_id: goalId,
-            value: value
+            value: { value: value } // Store as JSONB object
           });
         });
       });
