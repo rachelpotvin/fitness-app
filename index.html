@@ -5,13 +5,138 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CheckIt — simple goals</title>
   <style>
-    /* (same CSS as before, omitted for brevity) */
+    :root{
+      --bg:#0b0f14; --card:#121923; --muted:#2a3544; --text:#e8eef7; --accent:#6ee7b7; --accent2:#60a5fa; --warn:#f59e0b; --danger:#ef4444;
+    }
+    html,body{height:100%;}
+    body{margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:linear-gradient(180deg,#0b0f14,#0f1722 30%,#0b0f14); color:var(--text);}    
+    .container{max-width:960px; margin:0 auto; padding:16px;}
+    header{display:flex; gap:12px; align-items:center; justify-content:space-between;}
+    .title{display:flex; align-items:center; gap:10px;}
+    .badge{background:var(--muted); color:#cfe7ff; padding:4px 10px; border-radius:999px; font-size:12px; letter-spacing:.3px;}
+    .row{display:flex; gap:12px; flex-wrap:wrap;}
+    .card{background:var(--card); border:1px solid #1f2a37; border-radius:16px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25);}    
+    .card h3{margin:0 0 8px 0; font-size:16px; font-weight:600}
+    .card small{color:#a9b9d6}
+    .grid{display:grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap:12px}
+    .col-4{grid-column: span 4}
+    .col-8{grid-column: span 8}
+    .col-12{grid-column: span 12}
+    @media (max-width:800px){.grid{grid-template-columns: repeat(6, 1fr)} .col-8{grid-column: span 6} .col-4{grid-column: span 6}}
+    @media (max-width:540px){.grid{grid-template-columns: repeat(4, 1fr)} .col-8{grid-column: span 4} .col-4{grid-column: span 4}}
+    .btn{background:#1f2937; border:1px solid #2c3b52; color:#cfe7ff; padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:600}
+    .btn:hover{background:#253244}
+    .btn.primary{background:linear-gradient(180deg, #1a2a2a, #12261e); border-color:#204a3a}
+    .btn.primary:hover{background:linear-gradient(180deg,#18322a,#123025)}
+    .btn.warn{background:#33260f; border-color:#5a400a; color:#ffd089}
+    .btn.danger{background:#3a1313; border-color:#5a1e1e; color:#ffd3d3}
+    .controls{display:flex; gap:8px; flex-wrap:wrap}
+    .input{background:#0c1320; border:1px solid #1f2a37; color:var(--text); padding:10px 12px; border-radius:12px; outline:none;}
+    .input:focus{border-color:#365986; box-shadow:0 0 0 3px rgba(96,165,250,.15)}
+    .goal-list{display:flex; flex-direction:column; gap:8px; margin-top:8px}
+    .goal{display:flex; justify-content:space-between; align-items:center; gap:8px; background:#0d1422; border:1px solid #1f2a37; padding:10px; border-radius:12px}
+    .goal .left{display:flex; align-items:center; gap:10px}
+    .pill{font-size:12px; padding:2px 8px; border-radius:999px; background:#172033; color:#b9d6ff; border:1px solid #22304a}
+    .checkbox{appearance:none; width:22px; height:22px; border-radius:7px; border:1px solid #2a3a55; display:grid; place-items:center; cursor:pointer; background:#0c1320}
+    .checkbox:checked{background:conic-gradient(from 180deg at 50% 50%, #0c1320, #0c1320) padding-box, linear-gradient(180deg, #76f2c1, #7cc2ff) border-box; border-color:transparent}
+    .checkbox:checked::after{content:"✓"; font-weight:800;}
+    .progress{height:10px; background:#0b111b; border:1px solid #1f2a37; border-radius:999px; overflow:hidden}
+    .progress>span{display:block; height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); width:0%}
+    .calendar{display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; margin-top:8px}
+    .day{background:#0d1422; border:1px solid #1f2a37; border-radius:10px; padding:8px; min-height:64px; display:flex; flex-direction:column; gap:6px}
+    .day .d{font-size:12px; color:#a9b9d6}
+    .tag{font-size:11px; background:#132033; color:#9ac3ff; padding:2px 6px; border-radius:999px; align-self:flex-start; border:1px solid #1e3456}
+    .today{outline:2px solid #375a86}
+    .empty{opacity:.35}
+    .sp{height:1px; background:#1f2a37; margin:14px 0}
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- (same HTML header, layout, etc. as before) -->
+    <header>
+      <div class="title">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 7L9 18l-5-5" stroke="#6ee7b7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h1 style="margin:0;font-size:20px">CheckIt</h1>
+        <span class="badge">offline • private • free</span>
+      </div>
+      <div class="controls">
+        <button class="btn" id="btnExport">Export</button>
+        <label class="btn" for="importFile">Import</label>
+        <input id="importFile" type="file" accept="application/json" style="display:none" />
+        <button class="btn danger" id="btnClear">Reset</button>
+      </div>
+    </header>
+
+    <div class="sp"></div>
+
+    <div class="grid">
+      <section class="card col-8">
+        <h3>Today</h3>
+        <small id="todayLabel"></small>
+        <div id="todayGoals" class="goal-list"></div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:6px">
+          <div class="progress" style="flex:1"><span id="todayProgress"></span></div>
+          <small id="todayStats"></small>
+        </div>
+      </section>
+
+      <section class="card col-4">
+        <h3>Targets</h3>
+        <small>Weekly and monthly points</small>
+        <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px">
+          <label>Weekly target points <input id="weeklyTarget" class="input" type="number" min="0" placeholder="e.g., 20"/></label>
+          <label>Monthly target points <input id="monthlyTarget" class="input" type="number" min="0" placeholder="e.g., 80"/></label>
+          <button class="btn" id="btnSaveTargets">Save targets</button>
+        </div>
+        <div class="sp"></div>
+        <div>
+          <small>Progress this week</small>
+          <div class="progress"><span id="weekProgress"></span></div>
+          <small id="weekStats"></small>
+        </div>
+        <div style="height:8px"></div>
+        <div>
+          <small>Progress this month</small>
+          <div class="progress"><span id="monthProgress"></span></div>
+          <small id="monthStats"></small>
+        </div>
+      </section>
+
+      <section class="card col-12">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">
+          <h3 style="margin:0">Calendar</h3>
+          <div class="controls">
+            <button class="btn" id="prevMonth">◀</button>
+            <div id="monthLabel" class="badge"></div>
+            <button class="btn" id="nextMonth">▶</button>
+          </div>
+        </div>
+        <div class="calendar" id="calendar"></div>
+      </section>
+
+      <section class="card col-12">
+        <h3>Goals</h3>
+        <div class="controls" id="addGoalControls" style="margin-bottom:8px">
+          <select id="goalMode" class="input">
+            <option value="binary">Binary</option>
+            <option value="count">Count</option>
+          </select>
+          <input id="goalName" class="input" placeholder="e.g., Walk steps"/>
+          <input id="goalPoints" class="input" type="number" min="1" value="1" style="width:110px"/>
+          <input id="goalUnitLabel" class="input" placeholder="Unit label (e.g., 5k steps)" style="width:200px; display:none"/>
+          <input id="goalUnitSize" class="input" type="number" min="1" value="1" style="width:120px; display:none"/>
+          <button class="btn primary" id="btnAddGoal">Add goal</button>
+        </div>
+        <small>Tip: For steps, choose Mode = Count, Unit label = "5k steps", Unit size = 5000, Points = 1.</small>
+        <div id="goalList" class="goal-list"></div>
+      </section>
+    </div>
+
+    <footer style="opacity:.7; margin:18px 6px 6px 6px; text-align:center; font-size:12px">
+      Built as a tiny, private web app. Your data stays in your browser (localStorage). You can export/back up anytime.
+    </footer>
   </div>
+
 <script>
   // ------------------ Storage & Data ------------------
   const KEY = 'checkit:v2';
@@ -38,7 +163,9 @@
       const s = JSON.parse(localStorage.getItem(KEY)) || JSON.parse(localStorage.getItem('checkit:v1')) || defaultState;
       // migrate v1 goals to include mode
       s.goals = (s.goals||[]).map(g=> ({ mode:'binary', unitLabel:'', unitSize:1, ...g }));
-      // migrate checks: booleans remain; numbers already fine
+      s.checks = s.checks || {};
+      if(typeof s.weeklyTarget!== 'number') s.weeklyTarget = 20;
+      if(typeof s.monthlyTarget!== 'number') s.monthlyTarget = 80;
       return s;
     } catch{ return defaultState }
   }
@@ -118,13 +245,13 @@
         const count = getDayValue(tISO, g.id) || 0; // integer units
         const pts = count * Number(g.points||1);
         isDone = count>0;
-        const minus = el('button', {class:'btn'}, [document.createTextNode('–')]);
-        const plus = el('button', {class:'btn'}, [document.createTextNode('+')]);
+        const minus = el('button', {class:'btn', title:'decrease'}, [document.createTextNode('–')]);
+        const plus = el('button', {class:'btn', title:'increase'}, [document.createTextNode('+')]);
         const counter = el('span', {class:'pill', html:`${count} unit${count===1?'':'s'} • ${pts} pts`});
         minus.addEventListener('click', ()=> { setCount(tISO, g.id, Math.max(0, (getDayValue(tISO,g.id)||0)-1)); });
         plus.addEventListener('click', ()=> { setCount(tISO, g.id, (getDayValue(tISO,g.id)||0)+1); });
         left.append(minus, plus);
-        left.append(el('div', {html:`<strong>${escapeHtml(g.name)}</strong><br/><small class="pill">${g.points} pt/ ${escapeHtml(g.unitLabel||'unit')}</small>`}));
+        left.append(el('div', {html:`<strong>${escapeHtml(g.name)}</strong><br/><small class="pill">${g.points} pt / ${escapeHtml(g.unitLabel||'unit')}</small>`}));
         container.append(left);
         container.append(counter);
       } else {
@@ -276,7 +403,13 @@
   function removeGoal(gid){
     if(!confirm('Delete this goal?')) return;
     state.goals = state.goals.filter(g=>g.id!==gid);
-    for(const k of Object.keys(state.checks)) if(k in state.checks){ delete state.checks[k][gid]; if(Object.keys(state.checks[k]).length===0) delete state.checks[k]; }
+    // remove related checks
+    for(const k of Object.keys(state.checks)){
+      if(state.checks[k] && (gid in state.checks[k])){
+        delete state.checks[k][gid];
+        if(Object.keys(state.checks[k]).length===0) delete state.checks[k];
+      }
+    }
     save(state); render();
   }
 
@@ -300,7 +433,7 @@
       <div id="egCountFields" style="display:${g.mode==='count'?'block':'none'}">
         <label>Unit label <input id="egUnitLabel" class="input" value="${escapeHtml(g.unitLabel||'unit')}" placeholder="e.g., 5k steps"/></label>
         <label>Unit size <input id="egUnitSize" class="input" type="number" min="1" value="${g.unitSize||1}"/></label>
-        <small>Each unit gives the Points above. Example: 1 pt per "5k steps".</small>
+        <small>Each unit gives the Points above. Example: 1 pt per \"5k steps\".</small>
       </div>
     </div>`;
     dialog(html, {
@@ -313,7 +446,6 @@
         if(name) { Object.assign(g, {name, mode, points:pts, unitLabel, unitSize}); save(state); render(); }
       }
     });
-    // toggle count fields on change
     setTimeout(()=>{
       const modeSel = document.getElementById('egMode');
       modeSel?.addEventListener('change', ()=>{
@@ -348,7 +480,7 @@
         <label>Unit label <input id="qaUnitLabel" class="input" placeholder="e.g., 5k steps"/></label>
         <label>Unit size <input id="qaUnitSize" class="input" type="number" value="1" min="1"/></label>
       </div>
-      <small>Tip: For steps like yours, set Mode=Count, Unit label="5k steps", Unit size=5000, Points=1.</small>
+      <small>Tip: For steps like yours, set Mode=Count, Unit label=\"5k steps\", Unit size=5000, Points=1.</small>
     </div>`, { onConfirm: ()=>{
       const mode = (document.getElementById('qaMode').value);
       const name = $('#qaName').value; const pts = $('#qaPts').value;
@@ -385,7 +517,7 @@
     const reader = new FileReader(); reader.onload = (e)=>{
       try{ const incoming = JSON.parse(e.target.result);
         if(!incoming || !incoming.goals || !('checks' in incoming)) throw new Error('Invalid file');
-        incoming.goals = incoming.goals.map(g=> ({ mode:'binary', unitLabel:'', unitSize:1, ...g }));
+        incoming.goals = (incoming.goals||[]).map(g=> ({ mode:'binary', unitLabel:'', unitSize:1, ...g }));
         state = incoming; save(state); render(); alert('Import successful!');
       }catch(err){ alert('Import failed: '+err.message) }
     }; reader.readAsText(file);
@@ -399,48 +531,33 @@
     d.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${innerHTML}
       <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" id="dlgCancel">Cancel</button><button class="btn primary" id="dlgOk">Save</button></div>
     </div>`;
-    document.body.append(d); d.showModal();
-    d.querySelector('#dlgCancel').addEventListener('click', ()=>{ d.close(); d.remove(); });
-    d.querySelector('#dlgOk').addEventListener('click', ()=>{ onConfirm && onConfirm(); d.close(); d.remove(); });
+    document.body.append(d); if(d.showModal) d.showModal(); else d.show();
+    d.querySelector('#dlgCancel').addEventListener('click', ()=>{ d.close && d.close(); d.remove(); });
+    d.querySelector('#dlgOk').addEventListener('click', ()=>{ onConfirm && onConfirm(); d.close && d.close(); d.remove(); });
   }
 
   // ------------------ Utils ------------------
   function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
 
   // ------------------ Events ------------------
-  $('#btnAddGoal').addEventListener('click', ()=> addGoal($('#goalName').value, $('#goalPoints').value));
-  $('#btnQuickAdd').addEventListener('click', quickAdd);
-  $('#btnSaveTargets').addEventListener('click', saveTargets);
-  $('#btnExport').addEventListener('click', exportData);
-  $('#importFile').addEventListener('change', (e)=> e.target.files[0] && importData(e.target.files[0]));
-  $('#btnClear').addEventListener('click', clearAll);
-  $('#prevMonth').addEventListener('click', ()=>{ currentMonth.setMonth(currentMonth.getMonth()-1); renderCalendar(); });
-  $('#nextMonth').addEventListener('click', ()=>{ currentMonth.setMonth(currentMonth.getMonth()+1); renderCalendar(); });
+  document.getElementById('btnAddGoal').addEventListener('click', ()=> addGoal($('#goalName').value, $('#goalPoints').value));
+  document.getElementById('btnSaveTargets').addEventListener('click', saveTargets);
+  document.getElementById('btnExport').addEventListener('click', exportData);
+  document.getElementById('importFile').addEventListener('change', (e)=> e.target.files[0] && importData(e.target.files[0]));
+  document.getElementById('btnClear').addEventListener('click', clearAll);
+  document.getElementById('prevMonth').addEventListener('click', ()=>{ currentMonth.setMonth(currentMonth.getMonth()-1); renderCalendar(); });
+  document.getElementById('nextMonth').addEventListener('click', ()=>{ currentMonth.setMonth(currentMonth.getMonth()+1); renderCalendar(); });
 
-  // Add extra inputs to the Goals add form (mode + count fields)
-  ;(function augmentAddForm(){
-    const controls = document.querySelector('.controls + small')?.previousElementSibling; // the controls div before the tip small
-    if(controls && !document.getElementById('goalMode')){
-      const sel = document.createElement('select'); sel.id='goalMode'; sel.className='input'; sel.innerHTML=`
-        <option value="binary">Binary</option>
-        <option value="count">Count</option>`;
-      const unitLabel = document.createElement('input'); unitLabel.id='goalUnitLabel'; unitLabel.placeholder='Unit label (e.g., 5k steps)'; unitLabel.className='input'; unitLabel.style.width='200px';
-      const unitSize = document.createElement('input'); unitSize.id='goalUnitSize'; unitSize.type='number'; unitSize.min='1'; unitSize.value='1'; unitSize.className='input'; unitSize.style.width='120px';
-      controls.insertBefore(sel, controls.lastElementChild);
-      controls.insertBefore(unitLabel, controls.lastElementChild);
-      controls.insertBefore(unitSize, controls.lastElementChild);
-      function toggle(){ const show = sel.value==='count'; unitLabel.style.display= show?'block':'none'; unitSize.style.display= show?'block':'none'; }
-      sel.addEventListener('change', toggle); toggle();
-    }
+  // show/hide unit fields based on mode
+  (function(){
+    const sel = document.getElementById('goalMode');
+    const ul = document.getElementById('goalUnitLabel');
+    const us = document.getElementById('goalUnitSize');
+    function toggle(){ const show = sel.value==='count'; ul.style.display = show?'block':'none'; us.style.display = show?'block':'none'; }
+    sel.addEventListener('change', toggle); toggle();
   })();
 
   // ------------------ Init ------------------
-  function setCountFromStepsExample(){
-    // Helper for users who store absolute steps: you can compute units as Math.floor(steps / unitSize) elsewhere if you want.
-  }
-
-  function setCountUIBindings(){ /* placeholder for future */ }
-
   render();
 </script>
 </body>
