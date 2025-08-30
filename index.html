@@ -173,7 +173,7 @@
   const SUPABASE_URL = 'https://ipvpgyihcgkgdahjbrtu.supabase.co'; // Replace with your actual URL
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwdnBneWloY2drZ2RhaGpicnR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1ODkxNTMsImV4cCI6MjA3MjE2NTE1M30.0QtB9_7chU9eAFYmN3At4-4w76W4eA6UNMVYDyYLRCU'; // Replace with your actual anon key
   
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   
   // ------------------ Auth Management ------------------
   let currentUser = null;
@@ -181,7 +181,7 @@
   async function initAuth() {
     try {
       console.log('Initializing auth...');
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabaseClient.auth.getUser();
       
       if (error) {
         console.error('Auth error:', error);
@@ -200,7 +200,7 @@
       }
       
       // Listen for auth changes
-      supabase.auth.onAuthStateChange((event, session) => {
+      supabaseClient.auth.onAuthStateChange((event, session) => {
         console.log('Auth state change:', event, session?.user?.email);
         if (event === 'SIGNED_IN' && session?.user) {
           currentUser = session.user;
@@ -231,7 +231,7 @@
     const email = document.getElementById('emailInput').value;
     const password = document.getElementById('passwordInput').value;
     
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabaseClient.auth.signInWithPassword({
       email,
       password
     });
@@ -245,7 +245,7 @@
     const email = document.getElementById('emailInput').value;
     const password = document.getElementById('passwordInput').value;
     
-    const { error } = await supabase.auth.signUp({
+    const { error } = await supabaseClient.auth.signUp({
       email,
       password
     });
@@ -258,7 +258,7 @@
   }
   
   async function signOut() {
-    await supabase.auth.signOut();
+    await supabaseClient.auth.signOut();
   }
   
   // ------------------ Data Management ------------------
@@ -283,7 +283,7 @@
       console.log('Loading data for user:', currentUser.id);
       
       // Load goals
-      const { data: goals, error: goalsError } = await supabase
+      const { data: goals, error: goalsError } = await supabaseClient
         .from('goals')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -296,7 +296,7 @@
       console.log('Goals loaded:', goals);
       
       // Load checks
-      const { data: checks, error: checksError } = await supabase
+      const { data: checks, error: checksError } = await supabaseClient
         .from('daily_checks')
         .select('*')
         .eq('user_id', currentUser.id);
@@ -308,7 +308,7 @@
       console.log('Checks loaded:', checks);
       
       // Load targets
-      const { data: targets, error: targetsError } = await supabase
+      const { data: targets, error: targetsError } = await supabaseClient
         .from('user_targets')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -357,7 +357,7 @@
       updateSyncStatus('Saving goals...');
       
       // Delete existing goals
-      await supabase
+      await supabaseClient
         .from('goals')
         .delete()
         .eq('user_id', currentUser.id);
@@ -374,7 +374,7 @@
           unit_size: goal.unitSize || 1
         }));
         
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from('goals')
           .insert(goalsToInsert);
         
@@ -408,14 +408,14 @@
       });
       
       // Delete existing checks
-      await supabase
+      await supabaseClient
         .from('daily_checks')
         .delete()
         .eq('user_id', currentUser.id);
       
       // Insert new checks
       if (checksToInsert.length > 0) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from('daily_checks')
           .insert(checksToInsert);
         
@@ -435,7 +435,7 @@
     try {
       updateSyncStatus('Saving targets...');
       
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('user_targets')
         .upsert({
           user_id: currentUser.id,
