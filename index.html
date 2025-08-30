@@ -24,33 +24,8 @@
     .col-4{grid-column: span 4}
     .col-8{grid-column: span 8}
     .col-12{grid-column: span 12}
-    @media (max-width:800px){
-      .grid{grid-template-columns: repeat(6, 1fr)} 
-      .col-8{grid-column: span 6} 
-      .col-4{grid-column: span 6}
-      .container{padding:12px}
-      header{flex-direction:column; gap:16px; align-items:stretch}
-      .title{justify-content:center}
-      .controls{justify-content:center}
-    }
-    @media (max-width:540px){
-      .grid{grid-template-columns: 1fr} 
-      .col-8{grid-column: span 1} 
-      .col-4{grid-column: span 1}
-      .container{padding:8px}
-      .card{padding:12px}
-      .controls{flex-direction:column}
-      .controls .btn{width:100%}
-      .goal{flex-direction:column; align-items:stretch; gap:12px}
-      .goal .left{flex-direction:column; align-items:stretch}
-      .calendar{grid-template-columns: repeat(7, 1fr); gap:6px}
-      .day{min-height:64px; padding:8px}
-      .day .d{font-size:12px}
-      .tag{font-size:11px; padding:2px 6px}
-      #addGoalControls{flex-direction:column; gap:8px}
-      #addGoalControls .input{width:100%}
-      #addGoalControls .btn{width:100%}
-    }
+    @media (max-width:800px){.grid{grid-template-columns: repeat(6, 1fr)} .col-8{grid-column: span 6} .col-4{grid-column: span 6}}
+    @media (max-width:540px){.grid{grid-template-columns: repeat(4, 1fr)} .col-8{grid-column: span 4} .col-4{grid-column: span 4}}
     .btn{background:#1f2937; border:1px solid #2c3b52; color:#cfe7ff; padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:600}
     .btn:hover{background:#253244}
     .btn.primary{background:linear-gradient(180deg, #1a2a2a, #12261e); border-color:#204a3a}
@@ -138,14 +113,8 @@
           <h3>Targets</h3>
           <small>Weekly and monthly points</small>
                   <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px">
-          <label style="display:flex; flex-direction:column; gap:4px">
-            <span>Weekly target points</span>
-            <input id="weeklyTarget" class="input" type="number" min="0" placeholder="e.g., 20"/>
-          </label>
-          <label style="display:flex; flex-direction:column; gap:4px">
-            <span>Monthly target points</span>
-            <input id="monthlyTarget" class="input" type="number" min="0" placeholder="e.g., 80"/>
-          </label>
+          <label>Weekly target points <input id="weeklyTarget" class="input" type="number" min="0" placeholder="e.g., 20"/></label>
+          <label>Monthly target points <input id="monthlyTarget" class="input" type="number" min="0" placeholder="e.g., 80"/></label>
           <button class="btn" id="btnSaveTargets">Save targets</button>
         </div>
           <div class="sp"></div>
