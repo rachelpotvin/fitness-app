@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CheckIt — simple goals</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#121923; --muted:#2a3544; --text:#e8eef7; --accent:#6ee7b7; --accent2:#60a5fa; --warn:#f59e0b; --danger:#ef4444;
+    }
+    html,body{height:100%;}
+    body{margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:linear-gradient(180deg,#0b0f14,#0f1722 30%,#0b0f14); color:var(--text);}
+    .container{max-width:960px; margin:0 auto; padding:16px;}
+    header{display:flex; gap:12px; align-items:center; justify-content:space-between;}
+    .title{display:flex; align-items:center; gap:10px;}
+    .badge{background:var(--muted); color:#cfe7ff; padding:4px 10px; border-radius:999px; font-size:12px; letter-spacing:.3px;}
+    .row{display:flex; gap:12px; flex-wrap:wrap;}
+    .card{background:var(--card); border:1px solid #1f2a37; border-radius:16px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25);}    
+    .card h3{margin:0 0 8px 0; font-size:16px; font-weight:600}
+    .card small{color:#a9b9d6}
+    .grid{display:grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap:12px}
+    .col-4{grid-column: span 4}
+    .col-8{grid-column: span 8}
+    .col-12{grid-column: span 12}
+    @media (max-width:800px){.grid{grid-template-columns: repeat(6, 1fr)} .col-8{grid-column: span 6} .col-4{grid-column: span 6}}
+    @media (max-width:540px){.grid{grid-template-columns: repeat(4, 1fr)} .col-8{grid-column: span 4} .col-4{grid-column: span 4}}
+    .btn{background:#1f2937; border:1px solid #2c3b52; color:#cfe7ff; padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:600}
+    .btn:hover{background:#253244}
+    .btn.primary{background:linear-gradient(180deg, #1a2a2a, #12261e); border-color:#204a3a}
+    .btn.primary:hover{background:linear-gradient(180deg,#18322a,#123025)}
+    .btn.warn{background:#33260f; border-color:#5a400a; color:#ffd089}
+    .btn.danger{background:#3a1313; border-color:#5a1e1e; color:#ffd3d3}
+    .controls{display:flex; gap:8px; flex-wrap:wrap}
+    .input{background:#0c1320; border:1px solid #1f2a37; color:var(--text); padding:10px 12px; border-radius:12px; outline:none;}
+    .input:focus{border-color:#365986; box-shadow:0 0 0 3px rgba(96,165,250,.15)}
+    .goal-list{display:flex; flex-direction:column; gap:8px; margin-top:8px}
+    .goal{display:flex; justify-content:space-between; align-items:center; gap:8px; background:#0d1422; border:1px solid #1f2a37; padding:10px; border-radius:12px}
+    .goal .left{display:flex; align-items:center; gap:10px}
+    .pill{font-size:12px; padding:2px 8px; border-radius:999px; background:#172033; color:#b9d6ff; border:1px solid #22304a}
+    .checkbox{appearance:none; width:22px; height:22px; border-radius:7px; border:1px solid #2a3a55; display:grid; place-items:center; cursor:pointer; background:#0c1320}
+    .checkbox:checked{background:conic-gradient(from 180deg at 50% 50%, #0c1320, #0c1320) padding-box, linear-gradient(180deg, #76f2c1, #7cc2ff) border-box; border-color:transparent}
+    .checkbox:checked::after{content:"✓"; font-weight:800;}
+    .progress{height:10px; background:#0b111b; border:1px solid #1f2a37; border-radius:999px; overflow:hidden}
+    .progress>span{display:block; height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); width:0%}
+    .calendar{display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; margin-top:8px}
+    .day{background:#0d1422; border:1px solid #1f2a37; border-radius:10px; padding:8px; min-height:64px; display:flex; flex-direction:column; gap:6px}
+    .day .d{font-size:12px; color:#a9b9d6}
+    .tag{font-size:11px; background:#132033; color:#9ac3ff; padding:2px 6px; border-radius:999px; align-self:flex-start; border:1px solid #1e3456}
+    .today{outline:2px solid #375a86}
+    .empty{opacity:.35}
+    .footer{display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-top:14px}
+    .link{color:#a9c9ff; text-decoration:underline; cursor:pointer}
+    .sp{height:1px; background:#1f2a37; margin:14px 0}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 7L9 18l-5-5" stroke="#6ee7b7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h1 style="margin:0;font-size:20px">CheckIt</h1>
+        <span class="badge">offline • private • free</span>
+      </div>
+      <div class="controls">
+        <button class="btn" id="btnExport">Export</button>
+        <label class="btn" for="importFile">Import</label>
+        <input id="importFile" type="file" accept="application/json" style="display:none" />
+        <button class="btn warn" id="btnClear">Reset</button>
+      </div>
+    </header>
+
+    <div class="sp"></div>
+
+    <div class="grid">
+      <section class="card col-8">
+        <h3>Today</h3>
+        <small id="todayLabel"></small>
+        <div id="todayGoals" class="goal-list"></div>
+        <div class="footer">
+          <div style="flex:1">
+            <div style="display:flex; align-items:center; gap:10px; margin-top:6px">
+              <div class="progress" style="flex:1"><span id="todayProgress"></span></div>
+              <small id="todayStats"></small>
+            </div>
+          </div>
+          <button class="btn primary" id="btnQuickAdd">+ Quick add goal</button>
+        </div>
+      </section>
+
+      <section class="card col-4">
+        <h3>Targets</h3>
+        <small>Weekly and monthly points</small>
+        <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px">
+          <label>Weekly target points <input id="weeklyTarget" class="input" type="number" min="0" placeholder="e.g., 20"/></label>
+          <label>Monthly target points <input id="monthlyTarget" class="input" type="number" min="0" placeholder="e.g., 80"/></label>
+          <button class="btn" id="btnSaveTargets">Save targets</button>
+        </div>
+        <div class="sp"></div>
+        <div>
+          <small>Progress this week</small>
+          <div class="progress"><span id="weekProgress"></span></div>
+          <small id="weekStats"></small>
+        </div>
+        <div style="height:8px"></div>
+        <div>
+          <small>Progress this month</small>
+          <div class="progress"><span id="monthProgress"></span></div>
+          <small id="monthStats"></small>
+        </div>
+      </section>
+
+      <section class="card col-12">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">
+          <h3 style="margin:0">Calendar</h3>
+          <div class="controls">
+            <button class="btn" id="prevMonth">◀</button>
+            <div id="monthLabel" class="badge"></div>
+            <button class="btn" id="nextMonth">▶</button>
+          </div>
+        </div>
+        <div class="calendar" id="calendar"></div>
+      </section>
+
+      <section class="card col-12">
+        <h3>Goals</h3>
+        <div class="controls" style="margin-bottom:8px">
+          <input id="goalName" class="input" placeholder="e.g., Run 20 min"/>
+          <input id="goalPoints" class="input" type="number" min="1" value="1" style="width:110px"/>
+          <button class="btn primary" id="btnAddGoal">Add goal</button>
+        </div>
+        <small>Tip: points weight how valuable a check is. Example: "Run 20 min" = 3 points; "Drink water" = 1 point.</small>
+        <div id="goalList" class="goal-list"></div>
+      </section>
+    </div>
+
+    <footer style="opacity:.7; margin:18px 6px 6px 6px; text-align:center; font-size:12px">
+      Built as a tiny, private web app. Your data stays in your browser (localStorage). You can export/back up anytime.
+    </footer>
+  </div>
+
+<script>
+  // ------------------ Storage & Data ------------------
+  const KEY = 'checkit:v1';
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  const startOfWeek = (d) => { const x=new Date(d); const day=(x.getDay()+6)%7; x.setDate(x.getDate()-day); x.setHours(0,0,0,0); return x } // Monday start
+  const startOfMonth = (d) => { const x=new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x }
+  const iso = (d) => new Date(d).toISOString().slice(0,10);
+
+  const defaultState = { goals: [ {id: id(), name: 'Walk 8k steps', points: 2}, {id: id(), name: 'Drink 2L water', points: 1} ],
+                         checks: {}, // { '2025-08-30': {goalId:true} }
+                         weeklyTarget: 20, monthlyTarget: 80 };
+  function id(){ return Math.random().toString(36).slice(2,9) }
+  function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || defaultState } catch{ return defaultState } }
+  function save(state){ localStorage.setItem(KEY, JSON.stringify(state)); }
+  let state = load();
+
+  // ------------------ DOM Helpers ------------------
+  const $ = (sel) => document.querySelector(sel);
+  function el(tag, attrs={}, kids=[]) {
+    const e = document.createElement(tag);
+    for (const [k,v] of Object.entries(attrs)) {
+      if (k==='class') e.className=v; else if (k==='html') e.innerHTML=v; else e.setAttribute(k,v)
+    }
+    for (const kid of kids) e.append(kid);
+    return e;
+  }
+
+  // ------------------ Rendering ------------------
+  function render(){
+    renderToday();
+    renderGoals();
+    renderCalendar();
+    renderTargets();
+  }
+
+  function renderTargets(){
+    $('#weeklyTarget').value = state.weeklyTarget || 0;
+    $('#monthlyTarget').value = state.monthlyTarget || 0;
+
+    const weekStart = startOfWeek(new Date());
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
+    const monthStart = startOfMonth(new Date());
+    const monthEnd = new Date(monthStart); monthEnd.setMonth(monthEnd.getMonth()+1);
+    const weekPts = sumPointsBetween(weekStart, weekEnd);
+    const monthPts = sumPointsBetween(monthStart, monthEnd);
+
+    const wp = pct(weekPts, state.weeklyTarget||0);
+    const mp = pct(monthPts, state.monthlyTarget||0);
+
+    $('#weekProgress').style.width = wp + '%';
+    $('#weekStats').textContent = `${weekPts} / ${state.weeklyTarget||0} pts`;
+
+    $('#monthProgress').style.width = mp + '%';
+    $('#monthStats').textContent = `${monthPts} / ${state.monthlyTarget||0} pts`;
+  }
+
+  function pct(val, total){ if(!total) return 0; return Math.min(100, Math.round((val/total)*100)); }
+
+  function sumPointsBetween(start, end){
+    let sum = 0;
+    const s = new Date(start); const e = new Date(end);
+    for (let d=new Date(s); d<e; d.setDate(d.getDate()+1)){
+      const day = state.checks[iso(d)] || {};
+      for(const gid of Object.keys(day)){
+        if(day[gid]){
+          const g = state.goals.find(x=>x.id===gid); if(g) sum += Number(g.points||1);
+        }
+      }
+    }
+    return sum;
+  }
+
+  function renderToday(){
+    const tISO = todayISO();
+    $('#todayLabel').textContent = new Date().toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'short', day:'numeric'});
+    const wrap = $('#todayGoals'); wrap.innerHTML='';
+
+    if(state.goals.length===0){
+      wrap.append(el('div', {class:'goal'}, [el('div', {html:'No goals yet. Add one below!'})]));
+      $('#todayProgress').style.width='0%';
+      $('#todayStats').textContent='0 completed';
+      return;
+    }
+
+    let done=0; const total = state.goals.length;
+    for(const g of state.goals){
+      const checked = !!(state.checks[tISO]?.[g.id]);
+      if(checked) done++;
+      const row = el('div', {class:'goal'});
+      const left = el('div', {class:'left'});
+      const cb = el('input', {type:'checkbox', class:'checkbox'});
+      cb.checked = checked;
+      cb.addEventListener('change', () => toggleCheck(tISO, g.id, cb.checked));
+      left.append(cb);
+      left.append(el('div', {html:`<strong>${escapeHtml(g.name)}</strong><br/><small class="pill">${g.points} pt${g.points==1?'':'s'}</small>`}));
+      row.append(left);
+      const del = el('button', {class:'btn danger'}, [document.createTextNode('Delete')]);
+      del.addEventListener('click', ()=> removeGoal(g.id));
+      row.append(del);
+      wrap.append(row);
+    }
+
+    const tpts = dayPoints(tISO);
+    $('#todayProgress').style.width = Math.round((done/total)*100)+'%';
+    $('#todayStats').textContent = `${done}/${total} goals • ${tpts} pts`;
+  }
+
+  function dayPoints(dayISO){
+    const day = state.checks[dayISO] || {}; let sum=0;
+    for(const gid of Object.keys(day)) if(day[gid]){ const g = state.goals.find(x=>x.id===gid); if(g) sum+=Number(g.points||1) }
+    return sum;
+  }
+
+  function renderGoals(){
+    const list = $('#goalList'); list.innerHTML='';
+    for(const g of state.goals){
+      const row = el('div', {class:'goal'});
+      row.append(el('div', {class:'left'}, [
+        el('span', {class:'pill', html:`${g.points} pt${g.points==1?'':'s'}`}),
+        el('div', {html:`<strong>${escapeHtml(g.name)}</strong>`})
+      ]));
+      const right = el('div', {class:'controls'});
+      const up = el('button', {class:'btn'}, [document.createTextNode('▲')]);
+      const down = el('button', {class:'btn'}, [document.createTextNode('▼')]);
+      up.addEventListener('click', ()=> moveGoal(g.id, -1));
+      down.addEventListener('click', ()=> moveGoal(g.id, +1));
+      const edit = el('button', {class:'btn'}, [document.createTextNode('Edit')]);
+      edit.addEventListener('click', ()=> editGoal(g.id));
+      const del = el('button', {class:'btn danger'}, [document.createTextNode('Delete')]);
+      del.addEventListener('click', ()=> removeGoal(g.id));
+      right.append(up, down, edit, del);
+      row.append(right);
+      list.append(row);
+    }
+  }
+
+  // ------------------ Calendar ------------------
+  let currentMonth = new Date();
+  function renderCalendar(){
+    const cal = $('#calendar'); cal.innerHTML='';
+    const year = currentMonth.getFullYear(); const month = currentMonth.getMonth();
+    $('#monthLabel').textContent = currentMonth.toLocaleDateString(undefined, {month:'long', year:'numeric'});
+    const first = new Date(year, month, 1);
+    const start = new Date(first); const offset = (start.getDay()+6)%7; start.setDate(1 - offset);
+    for(let i=0;i<42;i++){
+      const d = new Date(start); d.setDate(start.getDate()+i);
+      const isCurr = d.getMonth()===month;
+      const node = el('div', {class:'day'+(isCurr?'':' empty')});
+      const dISO = iso(d);
+      const pts = dayPoints(dISO);
+      const tag = el('span', {class:'tag', html: `${pts} pts`});
+      const header = el('div', {class:'d', html: d.getDate()});
+      if(iso(new Date())===dISO) node.classList.add('today');
+      node.append(header, tag);
+      node.addEventListener('click', ()=> openDayEditor(dISO));
+      cal.append(node);
+    }
+  }
+
+  function openDayEditor(dISO){
+    const name = new Date(dISO).toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'short', day:'numeric'});
+    const existing = state.checks[dISO] || {};
+    const checks = state.goals.map(g=>{
+      const checked = !!existing[g.id];
+      return `<label style="display:flex;align-items:center;gap:8px;margin:6px 0"><input type="checkbox" data-gid="${g.id}" ${checked?'checked':''}/> ${escapeHtml(g.name)} <span class="pill">${g.points} pts</span></label>`
+    }).join('');
+    const html = `<div style="display:flex;flex-direction:column;gap:8px">
+      <div><strong>${name}</strong></div>
+      ${checks || '<small>No goals yet.</small>'}
+    </div>`;
+    dialog(html, {
+      onConfirm: ()=>{
+        const inputs = Array.from(document.querySelectorAll('dialog input[type="checkbox"][data-gid]'));
+        const day = {}; inputs.forEach(i=> day[i.dataset.gid] = i.checked );
+        if(Object.keys(day).length>0){ state.checks[dISO]=day } else { delete state.checks[dISO] }
+        save(state); render();
+      }
+    });
+  }
+
+  // ------------------ Actions ------------------
+  function toggleCheck(dayISO, gid, val){
+    state.checks[dayISO] = state.checks[dayISO] || {};
+    state.checks[dayISO][gid] = val;
+    if(!val) delete state.checks[dayISO][gid];
+    if(state.checks[dayISO] && Object.keys(state.checks[dayISO]).length===0) delete state.checks[dayISO];
+    save(state); renderTargets(); renderToday(); renderCalendar();
+  }
+
+  function removeGoal(gid){
+    if(!confirm('Delete this goal?')) return;
+    state.goals = state.goals.filter(g=>g.id!==gid);
+    // Remove checks for this goal
+    for(const k of Object.keys(state.checks)) if(state.checks[k][gid]) delete state.checks[k][gid];
+    save(state); render();
+  }
+
+  function moveGoal(gid, dir){
+    const i = state.goals.findIndex(g=>g.id===gid); if(i<0) return;
+    const j = Math.max(0, Math.min(state.goals.length-1, i+dir));
+    if(i===j) return; const tmp = state.goals[i]; state.goals[i]=state.goals[j]; state.goals[j]=tmp; save(state); render();
+  }
+
+  function editGoal(gid){
+    const g = state.goals.find(x=>x.id===gid); if(!g) return;
+    const html = `<div style="display:flex;flex-direction:column;gap:8px">
+      <label>Name <input id="egName" class="input" value="${escapeHtml(g.name)}"/></label>
+      <label>Points <input id="egPts" class="input" type="number" min="1" value="${g.points}"/></label>
+    </div>`;
+    dialog(html, {
+      onConfirm: ()=>{
+        const name = document.getElementById('egName').value.trim();
+        const pts = Number(document.getElementById('egPts').value || 1);
+        if(name) { g.name=name; g.points=pts; save(state); render(); }
+      }
+    })
+  }
+
+  function addGoal(name, points){
+    name = (name||'').trim(); points = Number(points||1);
+    if(!name) return alert('Please enter a goal name.');
+    state.goals.push({id:id(), name, points}); save(state); render();
+    $('#goalName').value=''; $('#goalPoints').value='1';
+  }
+
+  function quickAdd(){
+    dialog(`<div style="display:flex;flex-direction:column;gap:8px">
+      <label>Goal name <input id="qaName" class="input" placeholder="e.g., Stretch 10 min"/></label>
+      <label>Points <input id="qaPts" class="input" type="number" value="1" min="1"/></label>
+      <small>Tip: A good mix is 1–3 points per goal.</small>
+    </div>`, { onConfirm: ()=> addGoal($('#qaName').value, $('#qaPts').value) });
+  }
+
+  function saveTargets(){
+    state.weeklyTarget = Number($('#weeklyTarget').value||0);
+    state.monthlyTarget = Number($('#monthlyTarget').value||0);
+    save(state); renderTargets();
+  }
+
+  // ------------------ Export / Import / Reset ------------------
+  function exportData(){
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `checkit-backup-${todayISO()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  function importData(file){
+    const reader = new FileReader(); reader.onload = (e)=>{
+      try{ const incoming = JSON.parse(e.target.result);
+        if(!incoming || !incoming.goals || !('checks' in incoming)) throw new Error('Invalid file');
+        state = incoming; save(state); render(); alert('Import successful!');
+      }catch(err){ alert('Import failed: '+err.message) }
+    }; reader.readAsText(file);
+  }
+  function clearAll(){ if(confirm('This will erase all data on this device. Continue?')) { localStorage.removeItem(KEY); state=load(); render(); } }
+
+  // ------------------ Dialog ------------------
+  function dialog(innerHTML, {onConfirm}={}){
+    const d = document.createElement('dialog');
+    d.style.border='1px solid #29405e'; d.style.background='#0b1220'; d.style.color='var(--text)'; d.style.borderRadius='14px'; d.style.padding='14px'; d.style.maxWidth='480px';
+    d.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">${innerHTML}
+      <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" id="dlgCancel">Cancel</button><button class="btn primary" id="dlgOk">Save</button></div>
+    </div>`;
+    document.body.append(d); d.showModal();
+    d.querySelector('#dlgCancel').addEventListener('click', ()=>{ d.close(); d.remove(); });
+    d.querySelector('#dlgOk').addEventListener('click', ()=>{ onConfirm && onConfirm(); d.close(); d.remove(); });
+  }
+
+  // ------------------ Utils ------------------
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
+
+  // ------------------ Events ------------------
+  $('#btnAddGoal').addEventListener('click', ()=> addGoal($('#goalName').value, $('#goalPoints').value));
+  $('#btnQuickAdd').addEventListener('click', quickAdd);
+  $('#btnSaveTargets').addEventListener('click', saveTargets);
+  $('#btnExport').addEventListener('click', exportData);
+  $('#importFile').addEventListener('change', (e)=> e.target.files[0] && importData(e.target.files[0]));
+  $('#btnClear').addEventListener('click', clearAll);
+  $('#prevMonth').addEventListener('click', ()=>{ currentMonth.setMonth(currentMonth.getMonth()-1); renderCalendar(); });
+  $('#nextMonth').addEventListener('click', ()=>{ currentMonth.setMonth(currentMonth.getMonth()+1); renderCalendar(); });
+
+  // ------------------ Init ------------------
+  render();
+</script>
+</body>
+</html>
