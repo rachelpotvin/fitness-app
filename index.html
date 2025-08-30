@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CheckIt — simple goals</title>
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#2a3544; --text:#e8eef7; --accent:#6ee7b7; --accent2:#60a5fa; --warn:#f59e0b; --danger:#ef4444;
@@ -49,140 +51,411 @@
     .today{outline:2px solid #375a86}
     .empty{opacity:.35}
     .sp{height:1px; background:#1f2a37; margin:14px 0}
+    
+    /* Auth styles */
+    .auth-container{display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px}
+    .auth-card{background:var(--card); border:1px solid #1f2a37; border-radius:16px; padding:24px; max-width:400px; width:100%}
+    .auth-card h2{margin:0 0 16px 0; text-align:center}
+    .auth-form{display:flex; flex-direction:column; gap:12px}
+    .auth-form .btn{width:100%}
+    .loading{opacity:0.7; pointer-events:none}
+    .sync-status{position:fixed; top:16px; right:16px; background:var(--card); border:1px solid #1f2a37; border-radius:8px; padding:8px 12px; font-size:12px; z-index:1000}
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div class="title">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 7L9 18l-5-5" stroke="#6ee7b7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <h1 style="margin:0;font-size:20px">CheckIt</h1>
-        <span class="badge">offline • private • free</span>
+  <!-- Auth Container -->
+  <div id="authContainer" class="auth-container" style="display:none">
+    <div class="auth-card">
+      <h2>CheckIt</h2>
+      <div class="auth-form">
+        <input id="emailInput" class="input" type="email" placeholder="Email" />
+        <input id="passwordInput" class="input" type="password" placeholder="Password" />
+        <button class="btn primary" id="signInBtn">Sign In</button>
+        <button class="btn" id="signUpBtn">Create Account</button>
       </div>
-      <div class="controls">
-        <button class="btn" id="btnExport">Export</button>
-        <label class="btn" for="importFile">Import</label>
-        <input id="importFile" type="file" accept="application/json" style="display:none" />
-        <button class="btn danger" id="btnClear">Reset</button>
-      </div>
-    </header>
-
-    <div class="sp"></div>
-
-    <div class="grid">
-      <section class="card col-8">
-        <h3>Today</h3>
-        <small id="todayLabel"></small>
-        <div id="todayGoals" class="goal-list"></div>
-        <div style="display:flex; align-items:center; gap:10px; margin-top:6px">
-          <div class="progress" style="flex:1"><span id="todayProgress"></span></div>
-          <small id="todayStats"></small>
-        </div>
-      </section>
-
-      <section class="card col-4">
-        <h3>Targets</h3>
-        <small>Weekly and monthly points</small>
-        <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px">
-          <label>Weekly target points <input id="weeklyTarget" class="input" type="number" min="0" placeholder="e.g., 20"/></label>
-          <label>Monthly target points <input id="monthlyTarget" class="input" type="number" min="0" placeholder="e.g., 80"/></label>
-          <button class="btn" id="btnSaveTargets">Save targets</button>
-        </div>
-        <div class="sp"></div>
-        <div>
-          <small>Progress this week</small>
-          <div class="progress"><span id="weekProgress"></span></div>
-          <small id="weekStats"></small>
-        </div>
-        <div style="height:8px"></div>
-        <div>
-          <small>Progress this month</small>
-          <div class="progress"><span id="monthProgress"></span></div>
-          <small id="monthStats"></small>
-        </div>
-      </section>
-
-      <section class="card col-12">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">
-          <h3 style="margin:0">Calendar</h3>
-          <div class="controls">
-            <button class="btn" id="prevMonth">◀</button>
-            <div id="monthLabel" class="badge"></div>
-            <button class="btn" id="nextMonth">▶</button>
-          </div>
-        </div>
-        <div class="calendar" id="calendar"></div>
-      </section>
-
-      <section class="card col-12">
-        <h3>Goals</h3>
-        <div class="controls" id="addGoalControls" style="margin-bottom:8px">
-          <select id="goalMode" class="input">
-            <option value="binary">Binary</option>
-            <option value="count">Count</option>
-          </select>
-          <input id="goalName" class="input" placeholder="e.g., Walk steps"/>
-          <input id="goalPoints" class="input" type="number" min="1" value="1" style="width:110px"/>
-          <input id="goalUnitLabel" class="input" placeholder="Unit label (e.g., 5k steps)" style="width:200px; display:none"/>
-          <input id="goalUnitSize" class="input" type="number" min="1" value="1" style="width:120px; display:none"/>
-          <button class="btn primary" id="btnAddGoal">Add goal</button>
-        </div>
-        <small>Tip: For steps, choose Mode = Count, Unit label = "5k steps", Unit size = 5000, Points = 1.</small>
-        <div id="goalList" class="goal-list"></div>
-      </section>
     </div>
+  </div>
 
-    <footer style="opacity:.7; margin:18px 6px 6px 6px; text-align:center; font-size:12px">
-      Built as a tiny, private web app. Your data stays in your browser (localStorage). You can export/back up anytime.
-    </footer>
+  <!-- Main App -->
+  <div id="appContainer">
+    <div class="sync-status" id="syncStatus">Syncing...</div>
+    
+    <div class="container">
+      <header>
+        <div class="title">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 7L9 18l-5-5" stroke="#6ee7b7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h1 style="margin:0;font-size:20px">CheckIt</h1>
+          <span class="badge">cloud • private • free</span>
+        </div>
+        <div class="controls">
+          <button class="btn" id="btnExport">Export</button>
+          <label class="btn" for="importFile">Import</label>
+          <input id="importFile" type="file" accept="application/json" style="display:none" />
+          <button class="btn" id="btnSignOut">Sign Out</button>
+          <button class="btn danger" id="btnClear">Reset</button>
+        </div>
+      </header>
+
+      <div class="sp"></div>
+
+      <div class="grid">
+        <section class="card col-8">
+          <h3>Today</h3>
+          <small id="todayLabel"></small>
+          <div id="todayGoals" class="goal-list"></div>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:6px">
+            <div class="progress" style="flex:1"><span id="todayProgress"></span></div>
+            <small id="todayStats"></small>
+          </div>
+        </section>
+
+        <section class="card col-4">
+          <h3>Targets</h3>
+          <small>Weekly and monthly points</small>
+          <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px">
+            <label>Weekly target points <input id="weeklyTarget" class="input" type="number" min="0" placeholder="e.g., 20"/></label>
+            <label>Monthly target points <input id="monthlyTarget" class="input" type="number" min="0" placeholder="e.g., 80"/></label>
+            <button class="btn" id="btnSaveTargets">Save targets</button>
+          </div>
+          <div class="sp"></div>
+          <div>
+            <small>Progress this week</small>
+            <div class="progress"><span id="weekProgress"></span></div>
+            <small id="weekStats"></small>
+          </div>
+          <div style="height:8px"></div>
+          <div>
+            <small>Progress this month</small>
+            <div class="progress"><span id="monthProgress"></span></div>
+            <small id="monthStats"></small>
+          </div>
+        </section>
+
+        <section class="card col-12">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap">
+            <h3 style="margin:0">Calendar</h3>
+            <div class="controls">
+              <button class="btn" id="prevMonth">◀</button>
+              <div id="monthLabel" class="badge"></div>
+              <button class="btn" id="nextMonth">▶</button>
+            </div>
+          </div>
+          <div class="calendar" id="calendar"></div>
+        </section>
+
+        <section class="card col-12">
+          <h3>Goals</h3>
+          <div class="controls" id="addGoalControls" style="margin-bottom:8px">
+            <select id="goalMode" class="input">
+              <option value="binary">Binary</option>
+              <option value="count">Count</option>
+            </select>
+            <input id="goalName" class="input" placeholder="e.g., Walk steps"/>
+            <input id="goalPoints" class="input" type="number" min="1" value="1" style="width:110px"/>
+            <input id="goalUnitLabel" class="input" placeholder="Unit label (e.g., 5k steps)" style="width:200px; display:none"/>
+            <input id="goalUnitSize" class="input" type="number" min="1" value="1" style="width:120px; display:none"/>
+            <button class="btn primary" id="btnAddGoal">Add goal</button>
+          </div>
+          <small>Tip: For steps, choose Mode = Count, Unit label = "5k steps", Unit size = 5000, Points = 1.</small>
+          <div id="goalList" class="goal-list"></div>
+        </section>
+      </div>
+
+      <footer style="opacity:.7; margin:18px 6px 6px 6px; text-align:center; font-size:12px">
+        Built with Supabase. Your data is synced across all devices.
+      </footer>
+    </div>
   </div>
 
 <script>
-  // ------------------ Storage & Data ------------------
-  const KEY = 'checkit:v2';
+  // ------------------ Supabase Setup ------------------
+  // Replace these with your actual Supabase credentials
+  const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+  
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  // ------------------ Auth Management ------------------
+  let currentUser = null;
+  
+  async function initAuth() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      currentUser = user;
+      showApp();
+      loadData();
+    } else {
+      showAuth();
+    }
+    
+    // Listen for auth changes
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        currentUser = session.user;
+        showApp();
+        loadData();
+      } else if (event === 'SIGNED_OUT') {
+        currentUser = null;
+        showAuth();
+      }
+    });
+  }
+  
+  function showAuth() {
+    document.getElementById('authContainer').style.display = 'flex';
+    document.getElementById('appContainer').style.display = 'none';
+  }
+  
+  function showApp() {
+    document.getElementById('authContainer').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+  }
+  
+  async function signIn() {
+    const email = document.getElementById('emailInput').value;
+    const password = document.getElementById('passwordInput').value;
+    
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    
+    if (error) {
+      alert('Sign in failed: ' + error.message);
+    }
+  }
+  
+  async function signUp() {
+    const email = document.getElementById('emailInput').value;
+    const password = document.getElementById('passwordInput').value;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+    
+    if (error) {
+      alert('Sign up failed: ' + error.message);
+    } else {
+      alert('Check your email for confirmation link!');
+    }
+  }
+  
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
+  
+  // ------------------ Data Management ------------------
+  const defaultState = {
+    goals: [
+      {id: id(), name: 'Walk steps', points: 1, mode:'count', unitLabel:'5k steps', unitSize: 5000},
+      {id: id(), name: 'Drink 2L water', points: 1, mode:'binary'}
+    ],
+    checks: {},
+    weeklyTarget: 20,
+    monthlyTarget: 80
+  };
+  
+  let state = { ...defaultState };
+  let isInitialized = false;
+  
+  async function loadData() {
+    if (!currentUser) return;
+    
+    try {
+      // Load goals
+      const { data: goals, error: goalsError } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at');
+      
+      if (goalsError) throw goalsError;
+      
+      // Load checks
+      const { data: checks, error: checksError } = await supabase
+        .from('daily_checks')
+        .select('*')
+        .eq('user_id', currentUser.id);
+      
+      if (checksError) throw checksError;
+      
+      // Load targets
+      const { data: targets, error: targetsError } = await supabase
+        .from('user_targets')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+      
+      if (targetsError && targetsError.code !== 'PGRST116') throw targetsError;
+      
+      // Transform data
+      const checksMap = {};
+      checks?.forEach(check => {
+        if (!checksMap[check.date]) checksMap[check.date] = {};
+        checksMap[check.date][check.goal_id] = check.value;
+      });
+      
+      state = {
+        goals: goals || defaultState.goals,
+        checks: checksMap,
+        weeklyTarget: targets?.weekly_target || defaultState.weeklyTarget,
+        monthlyTarget: targets?.monthly_target || defaultState.monthlyTarget
+      };
+      
+      isInitialized = true;
+      render();
+      updateSyncStatus('Synced');
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+      updateSyncStatus('Error loading data');
+    }
+  }
+  
+  async function saveGoals() {
+    if (!currentUser || !isInitialized) return;
+    
+    try {
+      updateSyncStatus('Saving goals...');
+      
+      // Delete existing goals
+      await supabase
+        .from('goals')
+        .delete()
+        .eq('user_id', currentUser.id);
+      
+      // Insert new goals
+      if (state.goals.length > 0) {
+        const goalsToInsert = state.goals.map(goal => ({
+          user_id: currentUser.id,
+          goal_id: goal.id,
+          name: goal.name,
+          points: goal.points,
+          mode: goal.mode,
+          unit_label: goal.unitLabel || '',
+          unit_size: goal.unitSize || 1
+        }));
+        
+        const { error } = await supabase
+          .from('goals')
+          .insert(goalsToInsert);
+        
+        if (error) throw error;
+      }
+      
+      updateSyncStatus('Goals saved');
+    } catch (error) {
+      console.error('Error saving goals:', error);
+      updateSyncStatus('Error saving goals');
+    }
+  }
+  
+  async function saveChecks() {
+    if (!currentUser || !isInitialized) return;
+    
+    try {
+      updateSyncStatus('Saving checks...');
+      
+      // Prepare checks for insertion
+      const checksToInsert = [];
+      Object.entries(state.checks).forEach(([date, dayChecks]) => {
+        Object.entries(dayChecks).forEach(([goalId, value]) => {
+          checksToInsert.push({
+            user_id: currentUser.id,
+            date: date,
+            goal_id: goalId,
+            value: value
+          });
+        });
+      });
+      
+      // Delete existing checks
+      await supabase
+        .from('daily_checks')
+        .delete()
+        .eq('user_id', currentUser.id);
+      
+      // Insert new checks
+      if (checksToInsert.length > 0) {
+        const { error } = await supabase
+          .from('daily_checks')
+          .insert(checksToInsert);
+        
+        if (error) throw error;
+      }
+      
+      updateSyncStatus('Checks saved');
+    } catch (error) {
+      console.error('Error saving checks:', error);
+      updateSyncStatus('Error saving checks');
+    }
+  }
+  
+  async function saveTargets() {
+    if (!currentUser || !isInitialized) return;
+    
+    try {
+      updateSyncStatus('Saving targets...');
+      
+      const { error } = await supabase
+        .from('user_targets')
+        .upsert({
+          user_id: currentUser.id,
+          weekly_target: state.weeklyTarget,
+          monthly_target: state.monthlyTarget
+        });
+      
+      if (error) throw error;
+      
+      updateSyncStatus('Targets saved');
+    } catch (error) {
+      console.error('Error saving targets:', error);
+      updateSyncStatus('Error saving targets');
+    }
+  }
+  
+  function updateSyncStatus(message) {
+    const statusEl = document.getElementById('syncStatus');
+    statusEl.textContent = message;
+    setTimeout(() => {
+      if (statusEl.textContent === message) {
+        statusEl.textContent = 'Synced';
+      }
+    }, 2000);
+  }
+  
+  // Modified save function to use Supabase
+  async function save(state) {
+    if (!currentUser || !isInitialized) return;
+    
+    await Promise.all([
+      saveGoals(),
+      saveChecks(),
+      saveTargets()
+    ]);
+  }
+  
+  // ------------------ Rest of your existing code ------------------
   const todayISO = () => {
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth()+1).padStart(2,'0');
     const day = String(d.getDate()).padStart(2,'0');
-    return `${y}-${m}-${day}`; // local date, no UTC shift
+    return `${y}-${m}-${day}`;
   };
-  const startOfWeek = (d) => { const x=new Date(d); const day=(x.getDay()+6)%7; x.setDate(x.getDate()-day); x.setHours(0,0,0,0); return x } // Monday start
+  
+  const startOfWeek = (d) => { const x=new Date(d); const day=(x.getDay()+6)%7; x.setDate(x.getDate()-day); x.setHours(0,0,0,0); return x }
   const startOfMonth = (d) => { const x=new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x }
   const iso = (d) => {
     const x = new Date(d);
     const y = x.getFullYear();
     const m = String(x.getMonth()+1).padStart(2,'0');
     const day = String(x.getDate()).padStart(2,'0');
-    return `${y}-${m}-${day}`; // local date key
-  };
-
-  // goal.mode: 'binary' (checked/unchecked) or 'count' (integer multiples per day)
-  // For 'count': each unit contributes `points` points. e.g., unitSize=5000 (steps), points=1 => 10k steps = 2 units = 2 points.
-  const defaultState = {
-    goals: [
-      {id: id(), name: 'Walk steps', points: 1, mode:'count', unitLabel:'5k steps', unitSize: 5000},
-      {id: id(), name: 'Drink 2L water', points: 1, mode:'binary'}
-    ],
-    checks: {}, // { 'YYYY-MM-DD': { goalId: true|false|number(count) } }
-    weeklyTarget: 20,
-    monthlyTarget: 80
+    return `${y}-${m}-${day}`;
   };
 
   function id(){ return Math.random().toString(36).slice(2,9) }
-  function load(){
-    try{
-      const s = JSON.parse(localStorage.getItem(KEY)) || JSON.parse(localStorage.getItem('checkit:v1')) || defaultState;
-      // migrate v1 goals to include mode
-      s.goals = (s.goals||[]).map(g=> ({ mode:'binary', unitLabel:'', unitSize:1, ...g }));
-      s.checks = s.checks || {};
-      if(typeof s.weeklyTarget!== 'number') s.weeklyTarget = 20;
-      if(typeof s.monthlyTarget!== 'number') s.monthlyTarget = 80;
-      return s;
-    } catch{ return defaultState }
-  }
-  function save(state){ localStorage.setItem(KEY, JSON.stringify(state)); }
-  let state = load();
 
   // ------------------ DOM Helpers ------------------
   const $ = (sel) => document.querySelector(sel);
@@ -197,6 +470,7 @@
 
   // ------------------ Rendering ------------------
   function render(){
+    if (!isInitialized) return;
     renderToday();
     renderGoals();
     renderCalendar();
@@ -254,7 +528,7 @@
       let isDone = false;
 
       if(g.mode === 'count'){
-        const count = getDayValue(tISO, g.id) || 0; // integer units
+        const count = getDayValue(tISO, g.id) || 0;
         const pts = count * Number(g.points||1);
         isDone = count>0;
         const minus = el('button', {class:'btn', title:'decrease'}, [document.createTextNode('–')]);
@@ -297,7 +571,7 @@
   function getDayValue(dayISO, gid){
     const day = state.checks[dayISO] || {}; const v = day[gid];
     if(typeof v === 'number') return v;
-    if(v === true) return 1; // legacy convenience
+    if(v === true) return 1;
     return 0;
   }
 
@@ -415,7 +689,6 @@
   function removeGoal(gid){
     if(!confirm('Delete this goal?')) return;
     state.goals = state.goals.filter(g=>g.id!==gid);
-    // remove related checks
     for(const k of Object.keys(state.checks)){
       if(state.checks[k] && (gid in state.checks[k])){
         delete state.checks[k][gid];
@@ -525,6 +798,7 @@
     a.download = `checkit-backup-${todayISO()}.json`;
     document.body.appendChild(a); a.click(); a.remove();
   }
+  
   function importData(file){
     const reader = new FileReader(); reader.onload = (e)=>{
       try{ const incoming = JSON.parse(e.target.result);
@@ -534,7 +808,14 @@
       }catch(err){ alert('Import failed: '+err.message) }
     }; reader.readAsText(file);
   }
-  function clearAll(){ if(confirm('This will erase all data on this device. Continue?')) { localStorage.removeItem(KEY); state=load(); render(); } }
+  
+  function clearAll(){ 
+    if(confirm('This will erase all data. Continue?')) { 
+      state = { ...defaultState }; 
+      save(state); 
+      render(); 
+    } 
+  }
 
   // ------------------ Dialog ------------------
   function dialog(innerHTML, {onConfirm}={}){
@@ -552,6 +833,9 @@
   function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])) }
 
   // ------------------ Events ------------------
+  document.getElementById('signInBtn').addEventListener('click', signIn);
+  document.getElementById('signUpBtn').addEventListener('click', signUp);
+  document.getElementById('btnSignOut').addEventListener('click', signOut);
   document.getElementById('btnAddGoal').addEventListener('click', ()=> addGoal($('#goalName').value, $('#goalPoints').value));
   document.getElementById('btnSaveTargets').addEventListener('click', saveTargets);
   document.getElementById('btnExport').addEventListener('click', exportData);
@@ -570,7 +854,7 @@
   })();
 
   // ------------------ Init ------------------
-  render();
+  initAuth();
 </script>
 </body>
 </html>
