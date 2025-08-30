@@ -140,10 +140,22 @@
 <script>
   // ------------------ Storage & Data ------------------
   const KEY = 'checkit:v2';
-  const todayISO = () => new Date().toISOString().slice(0,10);
+  const todayISO = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`; // local date, no UTC shift
+  };
   const startOfWeek = (d) => { const x=new Date(d); const day=(x.getDay()+6)%7; x.setDate(x.getDate()-day); x.setHours(0,0,0,0); return x } // Monday start
   const startOfMonth = (d) => { const x=new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x }
-  const iso = (d) => new Date(d).toISOString().slice(0,10);
+  const iso = (d) => {
+    const x = new Date(d);
+    const y = x.getFullYear();
+    const m = String(x.getMonth()+1).padStart(2,'0');
+    const day = String(x.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`; // local date key
+  };
 
   // goal.mode: 'binary' (checked/unchecked) or 'count' (integer multiples per day)
   // For 'count': each unit contributes `points` points. e.g., unitSize=5000 (steps), points=1 => 10k steps = 2 units = 2 points.
@@ -350,7 +362,7 @@
   }
 
   function openDayEditor(dISO){
-    const name = new Date(dISO).toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'short', day:'numeric'});
+    const name = (function(){ const [y,m,dd]=dISO.split('-').map(n=>parseInt(n,10)); return new Date(y, m-1, dd).toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'short', day:'numeric'}); })();
     const existing = state.checks[dISO] || {};
     const checks = state.goals.map(g=>{
       if(g.mode==='count'){
