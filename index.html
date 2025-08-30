@@ -405,7 +405,10 @@
       
       if (deleteError) {
         console.error('Delete goals error:', deleteError);
-        throw deleteError;
+        // Don't throw on delete errors, just log them
+        if (!deleteError.message.includes('does not exist')) {
+          console.warn('Delete goals warning:', deleteError);
+        }
       }
       
       // Insert new goals
@@ -428,7 +431,9 @@
         
         if (error) {
           console.error('Insert goals error:', error);
-          throw error;
+          // Don't throw on insert errors, just log them
+          console.warn('Insert goals warning:', error);
+          return;
         }
         
         console.log('Goals inserted successfully:', data);
@@ -446,6 +451,7 @@
     
     try {
       updateSyncStatus('Saving checks...');
+      console.log('Saving checks for user:', currentUser.id);
       
       // Prepare checks for insertion
       const checksToInsert = [];
@@ -460,25 +466,42 @@
         });
       });
       
+      console.log('Checks to insert:', checksToInsert);
+      
       // Delete existing checks
-      await supabaseClient
+      const { error: deleteError } = await supabaseClient
         .from('daily_checks')
         .delete()
         .eq('user_id', currentUser.id);
       
+      if (deleteError) {
+        console.error('Delete checks error:', deleteError);
+        // Don't throw on delete errors, just log them
+        if (!deleteError.message.includes('does not exist')) {
+          console.warn('Delete checks warning:', deleteError);
+        }
+      }
+      
       // Insert new checks
       if (checksToInsert.length > 0) {
-        const { error } = await supabaseClient
+        const { data, error } = await supabaseClient
           .from('daily_checks')
           .insert(checksToInsert);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Insert checks error:', error);
+          // Don't throw on insert errors, just log them
+          console.warn('Insert checks warning:', error);
+          return;
+        }
+        
+        console.log('Checks inserted successfully:', data);
       }
       
       updateSyncStatus('Checks saved');
     } catch (error) {
       console.error('Error saving checks:', error);
-      updateSyncStatus('Error saving checks');
+      updateSyncStatus('Error saving checks: ' + error.message);
     }
   }
   
@@ -515,15 +538,35 @@
     }, 2000);
   }
   
-  // Modified save function to use Supabase
+  // Modified save function to use Supabase with debouncing
+  let saveTimeout = null;
+  let isSaving = false;
+  
   async function save(state) {
     if (!currentUser || !isInitialized) return;
     
-    await Promise.all([
-      saveGoals(),
-      saveChecks(),
-      saveTargets()
-    ]);
+    // Clear existing timeout
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    
+    // Debounce saves to prevent conflicts
+    saveTimeout = setTimeout(async () => {
+      if (isSaving) return; // Prevent concurrent saves
+      
+      isSaving = true;
+      try {
+        await Promise.all([
+          saveGoals(),
+          saveChecks(),
+          saveTargets()
+        ]);
+      } catch (error) {
+        console.error('Save error:', error);
+      } finally {
+        isSaving = false;
+      }
+    }, 500); // Wait 500ms before saving
   }
   
   // ------------------ Rest of your existing code ------------------
