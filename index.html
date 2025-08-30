@@ -68,10 +68,10 @@
     <div class="auth-card">
       <h2>CheckIt</h2>
       <div class="auth-form">
-        <input id="emailInput" class="input" type="email" placeholder="Email" />
-        <input id="passwordInput" class="input" type="password" placeholder="Password" />
-        <button class="btn primary" id="signInBtn">Sign In</button>
-        <button class="btn" id="signUpBtn">Create Account</button>
+        <input id="emailInput" class="input" type="email" placeholder="Email" autocomplete="email" />
+        <input id="passwordInput" class="input" type="password" placeholder="Password" autocomplete="current-password" />
+        <button class="btn primary" id="signInBtn" type="button">Sign In</button>
+        <button class="btn" id="signUpBtn" type="button">Create Account</button>
       </div>
     </div>
   </div>
@@ -231,13 +231,27 @@
     const email = document.getElementById('emailInput').value;
     const password = document.getElementById('passwordInput').value;
     
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+    if (!email || !password) {
+      alert('Please enter both email and password');
+      return;
+    }
     
-    if (error) {
-      alert('Sign in failed: ' + error.message);
+    try {
+      console.log('Attempting sign in for:', email);
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error('Sign in error:', error);
+        alert('Sign in failed: ' + error.message);
+      } else {
+        console.log('Sign in successful:', data);
+      }
+    } catch (err) {
+      console.error('Sign in exception:', err);
+      alert('Sign in failed: ' + err.message);
     }
   }
   
@@ -245,15 +259,33 @@
     const email = document.getElementById('emailInput').value;
     const password = document.getElementById('passwordInput').value;
     
-    const { error } = await supabaseClient.auth.signUp({
-      email,
-      password
-    });
+    if (!email || !password) {
+      alert('Please enter both email and password');
+      return;
+    }
     
-    if (error) {
-      alert('Sign up failed: ' + error.message);
-    } else {
-      alert('Check your email for confirmation link!');
+    if (password.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+    
+    try {
+      console.log('Attempting sign up for:', email);
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error('Sign up error:', error);
+        alert('Sign up failed: ' + error.message);
+      } else {
+        console.log('Sign up successful:', data);
+        alert('Check your email for confirmation link!');
+      }
+    } catch (err) {
+      console.error('Sign up exception:', err);
+      alert('Sign up failed: ' + err.message);
     }
   }
   
