@@ -1,6 +1,30 @@
 -- Supabase Database Schema for CheckIt Fitness App
 -- Run this in your Supabase SQL Editor
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own goals" ON public.goals;
+DROP POLICY IF EXISTS "Users can insert their own goals" ON public.goals;
+DROP POLICY IF EXISTS "Users can update their own goals" ON public.goals;
+DROP POLICY IF EXISTS "Users can delete their own goals" ON public.goals;
+
+DROP POLICY IF EXISTS "Users can view their own daily checks" ON public.daily_checks;
+DROP POLICY IF EXISTS "Users can insert their own daily checks" ON public.daily_checks;
+DROP POLICY IF EXISTS "Users can update their own daily checks" ON public.daily_checks;
+DROP POLICY IF EXISTS "Users can delete their own daily checks" ON public.daily_checks;
+
+DROP POLICY IF EXISTS "Users can view their own targets" ON public.user_targets;
+DROP POLICY IF EXISTS "Users can insert their own targets" ON public.user_targets;
+DROP POLICY IF EXISTS "Users can update their own targets" ON public.user_targets;
+DROP POLICY IF EXISTS "Users can delete their own targets" ON public.user_targets;
+
+-- Drop existing triggers if they exist
+DROP TRIGGER IF EXISTS update_goals_updated_at ON public.goals;
+DROP TRIGGER IF EXISTS update_daily_checks_updated_at ON public.daily_checks;
+DROP TRIGGER IF EXISTS update_user_targets_updated_at ON public.user_targets;
+
+-- Drop existing function if it exists
+DROP FUNCTION IF EXISTS update_updated_at_column();
+
 -- Create tables
 CREATE TABLE IF NOT EXISTS public.goals (
     id BIGSERIAL PRIMARY KEY,
