@@ -179,26 +179,42 @@
   let currentUser = null;
   
   async function initAuth() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      currentUser = user;
-      showApp();
-      loadData();
-    } else {
-      showAuth();
-    }
-    
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        currentUser = session.user;
+    try {
+      console.log('Initializing auth...');
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error) {
+        console.error('Auth error:', error);
+        showAuth();
+        return;
+      }
+      
+      if (user) {
+        console.log('User found:', user.email);
+        currentUser = user;
         showApp();
         loadData();
-      } else if (event === 'SIGNED_OUT') {
-        currentUser = null;
+      } else {
+        console.log('No user found, showing auth');
         showAuth();
       }
-    });
+      
+      // Listen for auth changes
+      supabase.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state change:', event, session?.user?.email);
+        if (event === 'SIGNED_IN' && session?.user) {
+          currentUser = session.user;
+          showApp();
+          loadData();
+        } else if (event === 'SIGNED_OUT') {
+          currentUser = null;
+          showAuth();
+        }
+      });
+    } catch (error) {
+      console.error('Init auth error:', error);
+      showAuth();
+    }
   }
   
   function showAuth() {
@@ -263,6 +279,9 @@
     if (!currentUser) return;
     
     try {
+      updateSyncStatus('Loading data...');
+      console.log('Loading data for user:', currentUser.id);
+      
       // Load goals
       const { data: goals, error: goalsError } = await supabase
         .from('goals')
@@ -270,7 +289,11 @@
         .eq('user_id', currentUser.id)
         .order('created_at');
       
-      if (goalsError) throw goalsError;
+      if (goalsError) {
+        console.error('Goals error:', goalsError);
+        throw goalsError;
+      }
+      console.log('Goals loaded:', goals);
       
       // Load checks
       const { data: checks, error: checksError } = await supabase
@@ -278,7 +301,11 @@
         .select('*')
         .eq('user_id', currentUser.id);
       
-      if (checksError) throw checksError;
+      if (checksError) {
+        console.error('Checks error:', checksError);
+        throw checksError;
+      }
+      console.log('Checks loaded:', checks);
       
       // Load targets
       const { data: targets, error: targetsError } = await supabase
@@ -287,7 +314,11 @@
         .eq('user_id', currentUser.id)
         .single();
       
-      if (targetsError && targetsError.code !== 'PGRST116') throw targetsError;
+      if (targetsError && targetsError.code !== 'PGRST116') {
+        console.error('Targets error:', targetsError);
+        throw targetsError;
+      }
+      console.log('Targets loaded:', targets);
       
       // Transform data
       const checksMap = {};
@@ -306,10 +337,16 @@
       isInitialized = true;
       render();
       updateSyncStatus('Synced');
+      console.log('Data loaded successfully');
       
     } catch (error) {
       console.error('Error loading data:', error);
-      updateSyncStatus('Error loading data');
+      updateSyncStatus('Error: ' + error.message);
+      
+      // If tables don't exist, show a helpful message
+      if (error.message.includes('relation') && error.message.includes('does not exist')) {
+        alert('Database tables not found. Please run the SQL schema in Supabase SQL Editor first.');
+      }
     }
   }
   
