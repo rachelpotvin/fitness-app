@@ -333,6 +333,18 @@
       }
       console.log('Goals loaded:', goals);
       
+      // Transform goals to use goal_id as the id
+      const transformedGoals = goals?.map(goal => ({
+        id: goal.goal_id, // Use the goal_id from database as the id
+        name: goal.name,
+        points: goal.points,
+        mode: goal.mode,
+        unitLabel: goal.unit_label || '',
+        unitSize: goal.unit_size || 1
+      })) || [];
+      
+      console.log('Transformed goals:', transformedGoals);
+      
       // Load checks
       const { data: checks, error: checksError } = await supabaseClient
         .from('daily_checks')
@@ -371,7 +383,7 @@
       console.log('Final checks map:', checksMap);
       
       state = {
-        goals: goals || defaultState.goals,
+        goals: transformedGoals.length > 0 ? transformedGoals : defaultState.goals,
         checks: checksMap,
         weeklyTarget: targets?.weekly_target || defaultState.weeklyTarget,
         monthlyTarget: targets?.monthly_target || defaultState.monthlyTarget
@@ -782,6 +794,7 @@
   // ------------------ Calendar ------------------
   let currentMonth = new Date();
   function renderCalendar(){
+    console.log('Rendering calendar with state:', state);
     const cal = $('#calendar'); cal.innerHTML='';
     const year = currentMonth.getFullYear(); const month = currentMonth.getMonth();
     $('#monthLabel').textContent = currentMonth.toLocaleDateString(undefined, {month:'long', year:'numeric'});
@@ -840,16 +853,20 @@
 
   // ------------------ Actions ------------------
   function toggleCheck(dayISO, gid, val){
+    console.log(`Toggling check for ${dayISO}, goal ${gid}: ${val}`);
     state.checks[dayISO] = state.checks[dayISO] || {};
     state.checks[dayISO][gid] = !!val;
     if(state.checks[dayISO] && Object.keys(state.checks[dayISO]).every(k=>!state.checks[dayISO][k])) delete state.checks[dayISO];
+    console.log('Updated state.checks:', state.checks);
     save(state); renderTargets(); renderToday(); renderCalendar();
   }
 
   function setCount(dayISO, gid, count){
+    console.log(`Setting count for ${dayISO}, goal ${gid}: ${count}`);
     state.checks[dayISO] = state.checks[dayISO] || {};
     state.checks[dayISO][gid] = Math.max(0, Math.floor(Number(count)||0));
     if(state.checks[dayISO] && Object.keys(state.checks[dayISO]).every(k=> state.checks[dayISO][k]===false || state.checks[dayISO][k]===0)) delete state.checks[dayISO];
+    console.log('Updated state.checks:', state.checks);
     save(state); renderTargets(); renderToday(); renderCalendar();
   }
 
