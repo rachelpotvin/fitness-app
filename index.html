@@ -545,6 +545,15 @@
   async function save(state) {
     if (!currentUser || !isInitialized) return;
     
+    // If already saving, just return
+    if (isSaving) {
+      console.log('Save already in progress, skipping...');
+      return;
+    }
+    
+    // Log where save is being called from
+    console.log('Save called from:', new Error().stack?.split('\n')[2] || 'unknown');
+    
     // Clear existing timeout
     if (saveTimeout) {
       clearTimeout(saveTimeout);
@@ -552,21 +561,28 @@
     
     // Debounce saves to prevent conflicts
     saveTimeout = setTimeout(async () => {
-      if (isSaving) return; // Prevent concurrent saves
+      if (isSaving) {
+        console.log('Save already in progress, skipping...');
+        return;
+      }
       
+      console.log('Starting save operation...');
       isSaving = true;
+      
       try {
         await Promise.all([
           saveGoals(),
           saveChecks(),
           saveTargets()
         ]);
+        console.log('Save operation completed successfully');
       } catch (error) {
         console.error('Save error:', error);
       } finally {
         isSaving = false;
+        console.log('Save operation finished');
       }
-    }, 500); // Wait 500ms before saving
+    }, 1000); // Wait 1 second before saving
   }
   
   // ------------------ Rest of your existing code ------------------
