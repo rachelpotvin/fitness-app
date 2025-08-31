@@ -365,7 +365,10 @@
         // Handle both JSONB and regular values
         const value = typeof check.value === 'object' ? check.value.value : check.value;
         checksMap[check.date][check.goal_id] = value;
+        console.log(`Loaded check for ${check.date}, goal ${check.goal_id}:`, value);
       });
+      
+      console.log('Final checks map:', checksMap);
       
       state = {
         goals: goals || defaultState.goals,
@@ -620,6 +623,7 @@
   // ------------------ Rendering ------------------
   function render(){
     if (!isInitialized) return;
+    console.log('Rendering app with state:', state);
     renderToday();
     renderGoals();
     renderCalendar();
@@ -725,13 +729,27 @@
   }
 
   function dayPoints(dayISO){
-    const day = state.checks[dayISO] || {}; let sum=0;
+    const day = state.checks[dayISO] || {}; 
+    let sum=0;
+    console.log(`Calculating points for ${dayISO}:`, day);
     for(const gid of Object.keys(day)){
-      const g = state.goals.find(x=>x.id===gid); if(!g) continue;
+      const g = state.goals.find(x=>x.id===gid); 
+      if(!g) {
+        console.log(`Goal not found for ${gid}`);
+        continue;
+      }
       const v = day[gid];
-      if(g.mode==='count') sum += (Number(g.points||1) * Number(v||0));
-      else if(v) sum += Number(g.points||1);
+      console.log(`Goal ${g.name}: value=${v}, points=${g.points}, mode=${g.mode}`);
+      if(g.mode==='count') {
+        const points = Number(g.points||1) * Number(v||0);
+        sum += points;
+        console.log(`Count goal: ${v} * ${g.points} = ${points}`);
+      } else if(v) {
+        sum += Number(g.points||1);
+        console.log(`Binary goal: ${g.points} points`);
+      }
     }
+    console.log(`Total points for ${dayISO}: ${sum}`);
     return sum;
   }
 
